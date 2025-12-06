@@ -232,6 +232,9 @@ export class Box2dPhysics implements IPhysics {
   }
 
   setEntityAngles(angles: number[]): void {
+    if (angles.length !== this.entities.length) {
+      console.warn(`Entity angle mismatch: expected ${this.entities.length} angles, got ${angles.length}`);
+    }
     for (let i = 0; i < Math.min(angles.length, this.entities.length); i++) {
       const entity = this.entities[i];
       const currentPos = entity.body.GetPosition();
