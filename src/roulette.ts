@@ -18,6 +18,7 @@ import { Box2dPhysics } from './physics-box2d';
 import { MouseEventHandlerName, MouseEventName } from './types/mouseEvents.type';
 import { FastForwader } from './fastForwader';
 import { ColorTheme } from './types/ColorTheme';
+import { StateManager, GameState } from './stateManager';
 
 export class Roulette extends EventTarget {
   private _marbles: Marble[] = [];
@@ -54,6 +55,10 @@ export class Roulette extends EventTarget {
   private _isReady: boolean = false;
   private fastForwarder!: FastForwader;
   private _theme: ColorTheme = Themes.dark;
+  private _stateManager: StateManager = new StateManager();
+  private _autoSaveEnabled: boolean = false;
+  private _autoSaveInterval: number = 5000; // Auto-save every 5 seconds
+  private _lastAutoSave: number = 0;
 
   get isReady() {
     return this._isReady;
@@ -106,6 +111,15 @@ export class Roulette extends EventTarget {
       this._updateEffects(this._updateInterval);
       this._elapsed -= this._updateInterval;
       this._uiObjects.forEach((obj) => obj.update(this._updateInterval));
+    }
+
+    // Auto-save functionality (non-blocking)
+    if (this._autoSaveEnabled && this._isRunning && currentTime - this._lastAutoSave > this._autoSaveInterval) {
+      this._lastAutoSave = currentTime;
+      // Save asynchronously without blocking the render loop
+      this.saveState().catch(err => {
+        console.error('Auto-save failed:', err);
+      });
     }
 
     if (this._marbles.length > 1) {
@@ -434,5 +448,96 @@ export class Roulette extends EventTarget {
     this._stage = stages[index];
     this.setMarbles(names);
     this._camera.initializePosition();
+  }
+
+  private getCurrentStageIndex(): number {
+    if (!this._stage) return 0;
+    return stages.findIndex(s => s === this._stage);
+  }
+
+  public async saveState(): Promise<number> {
+    await this._stateManager.init();
+    
+    const state: GameState = {
+      marbles: this._marbles.map(marble => marble.getState()),
+      winners: this._winners.map(w => ({ id: w.id, name: w.name })),
+      winnerRank: this._winnerRank,
+      totalMarbleCount: this._totalMarbleCount,
+      isRunning: this._isRunning,
+      timestamp: Date.now(),
+      stageIndex: this.getCurrentStageIndex(),
+    };
+
+    const id = await this._stateManager.saveState(state);
+    this.dispatchEvent(
+      new CustomEvent('stateSaved', { detail: { id, timestamp: state.timestamp } })
+    );
+    return id;
+  }
+
+  public async loadState(id?: number): Promise<void> {
+    await this._stateManager.init();
+    
+    const state = id !== undefined 
+      ? await this._stateManager.loadState(id)
+      : await this._stateManager.getLatestState();
+
+    if (!state) {
+      throw new Error('No saved state found');
+    }
+
+    // Reset current state
+    this.clearMarbles();
+    this._clearMap();
+
+    // Load stage
+    if (state.stageIndex >= 0 && state.stageIndex < stages.length) {
+      this._stage = stages[state.stageIndex];
+      this._loadMap();
+    }
+
+    // Restore marbles
+    this._totalMarbleCount = state.totalMarbleCount;
+    this._winnerRank = state.winnerRank;
+    this._isRunning = state.isRunning;
+
+    // Create marbles with saved state
+    state.marbles.forEach(marbleState => {
+      const marble = new Marble(
+        this.physics,
+        marbleState.id,
+        this._totalMarbleCount,
+        marbleState.name,
+        marbleState.weight,
+      );
+      marble.setState(marbleState);
+      this._marbles.push(marble);
+    });
+
+    // Restore winners
+    this._winners = state.winners.map(w => {
+      return this._marbles.find(m => m.id === w.id)!;
+    }).filter(m => m !== undefined);
+
+    this.dispatchEvent(
+      new CustomEvent('stateLoaded', { detail: { timestamp: state.timestamp } })
+    );
+  }
+
+  public setAutoSave(enabled: boolean, interval?: number) {
+    this._autoSaveEnabled = enabled;
+    if (interval !== undefined) {
+      this._autoSaveInterval = interval;
+    }
+  }
+
+  public async clearSavedStates(): Promise<void> {
+    await this._stateManager.init();
+    await this._stateManager.clearAllStates();
+  }
+
+  public async getAllSavedStates(): Promise<GameState[]> {
+    await this._stateManager.init();
+    return await this._stateManager.getAllStates();
   }
 }

@@ -197,6 +197,37 @@
       document.documentElement.classList.toggle('light', !window.options.darkMode);
     });
 
+    document.querySelector('#chkAutoSave').addEventListener('change', (e) => {
+      const enabled = e.target.matches(':checked');
+      window.roulette.setAutoSave(enabled);
+      if (enabled) {
+        simpleToast('Auto-save enabled');
+      } else {
+        simpleToast('Auto-save disabled');
+      }
+    });
+
+    document.querySelector('#btnSaveState').addEventListener('click', async () => {
+      try {
+        const id = await window.roulette.saveState();
+        simpleToast(`State saved (ID: ${id})`);
+      } catch (err) {
+        console.error('Failed to save state:', err);
+        simpleToast('Failed to save state');
+      }
+    });
+
+    document.querySelector('#btnLoadState').addEventListener('click', async () => {
+      try {
+        await window.roulette.loadState();
+        simpleToast('State loaded successfully');
+        getReady();
+      } catch (err) {
+        console.error('Failed to load state:', err);
+        simpleToast('No saved state found');
+      }
+    });
+
     document.querySelector('#in_winningRank').addEventListener('change', (e) => {
       const v = parseInt(e.target.value, 10);
       winnerType = 'custom';
@@ -223,6 +254,14 @@
 
     window.roulette.addEventListener('message', (e) => {
       simpleToast(e.detail);
+    });
+
+    window.roulette.addEventListener('stateSaved', (e) => {
+      console.log('State saved:', e.detail);
+    });
+
+    window.roulette.addEventListener('stateLoaded', (e) => {
+      console.log('State loaded:', e.detail);
     });
 
     document.querySelector('#btnShuffle').click();
@@ -341,6 +380,13 @@
         <i class='icon moon'></i>
       </div>
     </div>
+    <div class="row">
+      <label for='chkAutoSave'>
+        <i class="icon save"></i>
+        <span data-trans>Auto-save state</span>
+      </label>
+      <input type="checkbox" id="chkAutoSave" />
+    </div>
   </div>
   <div class="left">
     <h3 data-trans>Enter names below</h3>
@@ -348,6 +394,15 @@
     <div class="actions">
       <button id="btnNotice">
         <i class="icon megaphone"></i>
+      </button>
+      <div class="sep"></div>
+      <button id="btnSaveState" title="Save current state">
+        <i class="icon save"></i>
+        <span data-trans>Save</span>
+      </button>
+      <button id="btnLoadState" title="Load last saved state">
+        <i class="icon upload"></i>
+        <span data-trans>Load</span>
       </button>
       <div class="sep"></div>
       <button id="btnShuffle">

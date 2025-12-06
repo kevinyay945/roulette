@@ -53,6 +53,50 @@ export class Marble {
     return this.position.angle;
   }
 
+  getState() {
+    const position = this.physics.getMarblePosition(this.id);
+    const velocity = this.physics.getMarbleVelocity(this.id);
+    const angularVelocity = this.physics.getMarbleAngularVelocity(this.id);
+
+    return {
+      id: this.id,
+      name: this.name,
+      weight: this.weight,
+      position,
+      velocity,
+      angularVelocity,
+      isActive: this.isActive,
+      hue: this.hue,
+      coolTime: this._coolTime,
+      stuckTime: this._stuckTime,
+    };
+  }
+
+  setState(state: {
+    position: { x: number; y: number; angle: number };
+    velocity: { x: number; y: number };
+    angularVelocity: number;
+    isActive: boolean;
+    coolTime: number;
+    stuckTime: number;
+  }) {
+    this.physics.setMarbleState(
+      this.id,
+      state.position,
+      state.velocity,
+      state.angularVelocity,
+      state.isActive,
+    );
+    this.isActive = state.isActive;
+    this._coolTime = state.coolTime;
+    this._stuckTime = state.stuckTime;
+    this.lastPosition = { x: state.position.x, y: state.position.y };
+  }
+
+  get angle() {
+    return this.position.angle;
+  }
+
   constructor(
     physics: IPhysics,
     order: number,
