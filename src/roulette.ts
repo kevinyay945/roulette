@@ -18,6 +18,7 @@ import { Box2dPhysics } from './physics-box2d';
 import { MouseEventHandlerName, MouseEventName } from './types/mouseEvents.type';
 import { FastForwader } from './fastForwader';
 import { ColorTheme } from './types/ColorTheme';
+import { StateManager } from './stateManager';
 
 export class Roulette extends EventTarget {
   private _marbles: Marble[] = [];
@@ -54,6 +55,10 @@ export class Roulette extends EventTarget {
   private _isReady: boolean = false;
   private fastForwarder!: FastForwader;
   private _theme: ColorTheme = Themes.dark;
+  private stateManager: StateManager = new StateManager();
+  private _lastSaveTime: number = 0;
+  private _saveInterval: number = 2000; // Save every 2 seconds when running
+  private _pendingSave: boolean = false;
 
   get isReady() {
     return this._isReady;
@@ -123,6 +128,9 @@ export class Roulette extends EventTarget {
             : 0,
       });
     }
+
+    // Auto-save state periodically
+    this._autoSaveState();
 
     this._render();
     window.requestAnimationFrame(this._update);
@@ -235,6 +243,9 @@ export class Roulette extends EventTarget {
 
     this.physics = new Box2dPhysics();
     await this.physics.init();
+
+    // Initialize state manager
+    await this.stateManager.init();
 
     this.addUiObject(new RankRenderer());
     this.attachEvent();
@@ -434,5 +445,137 @@ export class Roulette extends EventTarget {
     this._stage = stages[index];
     this.setMarbles(names);
     this._camera.initializePosition();
+  }
+
+  // State management methods
+  public async saveState(): Promise<void> {
+    if (!this._stage || this._marbles.length === 0) {
+      return;
+    }
+
+    try {
+      const state = {
+        marbles: this._marbles.map(m => m.getState()),
+        winners: this._winners.map(m => m.getState()),
+        winnerRank: this._winnerRank,
+        isRunning: this._isRunning,
+        stageIndex: stages.indexOf(this._stage),
+        totalMarbleCount: this._totalMarbleCount,
+        cameraX: this._camera.position.x,
+        cameraY: this._camera.position.y,
+        cameraZoom: this._camera.zoom,
+        options: {
+          useSkills: options.useSkills,
+          winningRank: options.winningRank,
+          autoRecording: options.autoRecording,
+        },
+        timestamp: Date.now(),
+      };
+
+      await this.stateManager.saveState(state);
+      this._pendingSave = false;
+    } catch (error) {
+      console.error('Failed to save state:', error);
+    }
+  }
+
+  public async loadState(): Promise<boolean> {
+    try {
+      const state = await this.stateManager.loadState();
+      if (!state) {
+        return false;
+      }
+
+      // Restore stage
+      if (state.stageIndex >= 0 && state.stageIndex < stages.length) {
+        this._stage = stages[state.stageIndex];
+        this._loadMap();
+      }
+
+      // Clear existing marbles
+      this.clearMarbles();
+
+      // Restore marbles
+      this._totalMarbleCount = state.totalMarbleCount;
+      state.marbles.forEach(marbleState => {
+        const marble = new Marble(
+          this.physics,
+          marbleState.id,
+          state.totalMarbleCount,
+          marbleState.name,
+          marbleState.weight
+        );
+        marble.isActive = marbleState.isActive;
+        marble.restoreState({
+          coolTime: marbleState.coolTime,
+          stuckTime: marbleState.stuckTime,
+        });
+        this._marbles.push(marble);
+
+        // Restore physics position if marble was active
+        if (marbleState.isActive) {
+          this.physics.setMarblePosition(marbleState.id, marbleState.x, marbleState.y, marbleState.angle);
+          this.physics.enableMarble(marbleState.id);
+        }
+      });
+
+      // Restore winners
+      this._winners = [];
+      state.winners.forEach(winnerState => {
+        const winner = this._marbles.find(m => m.id === winnerState.id);
+        if (winner) {
+          this._winners.push(winner);
+        }
+      });
+
+      // Restore game state
+      this._winnerRank = state.winnerRank;
+      this._isRunning = state.isRunning;
+
+      // Restore camera position
+      this._camera.setPosition({ x: state.cameraX, y: state.cameraY }, false);
+      this._camera.zoom = state.cameraZoom;
+
+      // Restore options
+      options.useSkills = state.options.useSkills;
+      options.winningRank = state.options.winningRank;
+      options.autoRecording = state.options.autoRecording;
+
+      console.log(`State restored: ${this._marbles.length} marbles, ${this._winners.length} winners`);
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to load state:', error);
+      return false;
+    }
+  }
+
+  public async clearSavedState(): Promise<void> {
+    try {
+      await this.stateManager.clearState();
+    } catch (error) {
+      console.error('Failed to clear saved state:', error);
+    }
+  }
+
+  public async hasSavedState(): Promise<boolean> {
+    try {
+      return await this.stateManager.hasState();
+    } catch (error) {
+      console.error('Failed to check for saved state:', error);
+      return false;
+    }
+  }
+
+  private _autoSaveState() {
+    const now = Date.now();
+    if (this._isRunning && this._marbles.length > 0 && now - this._lastSaveTime > this._saveInterval) {
+      this._lastSaveTime = now;
+      if (!this._pendingSave) {
+        this._pendingSave = true;
+        // Use setTimeout to avoid blocking the main thread
+        setTimeout(() => this.saveState(), 0);
+      }
+    }
   }
 }

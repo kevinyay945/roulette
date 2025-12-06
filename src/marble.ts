@@ -235,4 +235,26 @@ export class Marble {
     );
     ctx.stroke();
   }
+
+  // State management methods
+  getState() {
+    return {
+      id: this.id,
+      name: this.name,
+      weight: this.weight,
+      x: this.x,
+      y: this.y,
+      angle: this.angle,
+      hue: this.hue,
+      isActive: this.isActive,
+      skill: this.skill,
+      coolTime: this._coolTime,
+      stuckTime: this._stuckTime,
+    };
+  }
+
+  restoreState(state: { coolTime: number; stuckTime: number }) {
+    this._coolTime = state.coolTime;
+    this._stuckTime = state.stuckTime;
+  }
 }

@@ -210,4 +210,20 @@ export class Box2dPhysics implements IPhysics {
       }
     }
   }
+
+  setMarblePosition(id: number, x: number, y: number, angle: number): void {
+    const marble = this.marbleMap[id];
+    if (marble) {
+      marble.SetTransform(new this.Box2D.b2Vec2(x, y), angle);
+      marble.SetAwake(true);
+    }
+  }
+
+  enableMarble(id: number): void {
+    const marble = this.marbleMap[id];
+    if (marble) {
+      marble.SetAwake(true);
+      marble.SetEnabled(true);
+    }
+  }
 }
