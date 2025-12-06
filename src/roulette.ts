@@ -454,9 +454,11 @@ export class Roulette extends EventTarget {
     }
 
     try {
+      const entityAngles = this.physics.getEntityAngles();
       const state = {
         marbles: this._marbles.map(m => m.getState()),
         winners: this._winners.map(m => m.getState()),
+        entities: entityAngles.map((angle, index) => ({ index, angle })),
         winnerRank: this._winnerRank,
         isRunning: this._isRunning,
         stageIndex: stages.indexOf(this._stage),
@@ -532,6 +534,12 @@ export class Roulette extends EventTarget {
       this._winnerRank = state.winnerRank;
       this._isRunning = state.isRunning;
 
+      // Restore entity angles (spinners)
+      if (state.entities && state.entities.length > 0) {
+        const angles = state.entities.map(e => e.angle);
+        this.physics.setEntityAngles(angles);
+      }
+
       // Restore camera position
       this._camera.setPosition({ x: state.cameraX, y: state.cameraY }, false);
       this._camera.zoom = state.cameraZoom;
@@ -541,7 +549,7 @@ export class Roulette extends EventTarget {
       options.winningRank = state.options.winningRank;
       options.autoRecording = state.options.autoRecording;
 
-      console.log(`State restored: ${this._marbles.length} marbles, ${this._winners.length} winners`);
+      console.log(`State restored: ${this._marbles.length} marbles, ${this._winners.length} winners, ${state.entities?.length || 0} entities`);
       
       return true;
     } catch (error) {

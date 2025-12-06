@@ -226,4 +226,16 @@ export class Box2dPhysics implements IPhysics {
       marble.SetEnabled(true);
     }
   }
+
+  getEntityAngles(): number[] {
+    return this.entities.map((entity) => entity.body.GetAngle());
+  }
+
+  setEntityAngles(angles: number[]): void {
+    for (let i = 0; i < Math.min(angles.length, this.entities.length); i++) {
+      const entity = this.entities[i];
+      const currentPos = entity.body.GetPosition();
+      entity.body.SetTransform(currentPos, angles[i]);
+    }
+  }
 }

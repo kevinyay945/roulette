@@ -17,9 +17,15 @@ export interface MarbleState {
   stuckTime: number;
 }
 
+export interface EntityState {
+  index: number;
+  angle: number;
+}
+
 export interface GameState {
   marbles: MarbleState[];
   winners: MarbleState[];
+  entities: EntityState[];
   winnerRank: number;
   isRunning: boolean;
   stageIndex: number;
