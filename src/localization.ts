@@ -47,6 +47,11 @@ function setLocale(newLocale: string) {
   translatePage();
 }
 
+function translate(key: string): string {
+  if (!locale) return key;
+  return key in Translations[locale] ? Translations[locale][key as TranslationKeys] : key;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   console.log('localization loaded');
   const browserLocale = getBrowserLocale();
@@ -56,3 +61,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // eslint-disable-next-line
 (window as any).translateElement = translateElement;
+// eslint-disable-next-line
+(window as any).translate = translate;

@@ -23,6 +23,8 @@ export const Translations = {
     'Save': 'Save',
     'Load': 'Load',
     'Clear': 'Clear',
+    'Are you sure you want to clear the saved game state?': 'Are you sure you want to clear the saved game state?',
+    'Found saved game state. Would you like to restore it?': 'Found saved game state. Would you like to restore it?',
   },
   ko: {
     'Enter names below': '이름들을 입력하세요',
@@ -48,6 +50,8 @@ export const Translations = {
     'Save': '저장',
     'Load': '불러오기',
     'Clear': '삭제',
+    'Are you sure you want to clear the saved game state?': '저장된 게임 상태를 삭제하시겠습니까?',
+    'Found saved game state. Would you like to restore it?': '저장된 게임 상태를 찾았습니다. 복원하시겠습니까?',
   },
 } as const;
 

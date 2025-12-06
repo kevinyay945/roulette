@@ -17,10 +17,6 @@ export interface MarbleState {
   stuckTime: number;
 }
 
-export interface PhysicsState {
-  marbles: MarbleState[];
-}
-
 export interface GameState {
   marbles: MarbleState[];
   winners: MarbleState[];

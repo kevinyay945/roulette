@@ -252,7 +252,8 @@
     });
 
     document.querySelector('#btnClearState').addEventListener('click', async () => {
-      if (confirm('Are you sure you want to clear the saved game state?')) {
+      const message = window.translate ? window.translate('Are you sure you want to clear the saved game state?') : 'Are you sure you want to clear the saved game state?';
+      if (confirm(message)) {
         try {
           await window.roulette.clearSavedState();
           simpleToast('Saved state cleared successfully!');
@@ -266,7 +267,8 @@
     // Check for saved state on startup
     window.roulette.hasSavedState().then(hasSaved => {
       if (hasSaved) {
-        if (confirm('Found saved game state. Would you like to restore it?')) {
+        const message = window.translate ? window.translate('Found saved game state. Would you like to restore it?') : 'Found saved game state. Would you like to restore it?';
+        if (confirm(message)) {
           window.roulette.loadState().then(loaded => {
             if (loaded) {
               simpleToast('Game state restored!');

@@ -573,8 +573,8 @@ export class Roulette extends EventTarget {
       this._lastSaveTime = now;
       if (!this._pendingSave) {
         this._pendingSave = true;
-        // Use setTimeout to avoid blocking the main thread
-        setTimeout(() => this.saveState(), 0);
+        // Use queueMicrotask for better performance
+        queueMicrotask(() => this.saveState());
       }
     }
   }
