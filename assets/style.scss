@@ -141,6 +141,14 @@ div.copyright a {
     &.moon {
       mask-image: url('images/moon.svg');
     }
+
+    &.save {
+      mask-image: url('images/save.svg');
+    }
+
+    &.upload {
+      mask-image: url('images/upload.svg');
+    }
   }
 
   div.left {

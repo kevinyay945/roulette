@@ -114,7 +114,8 @@ export class Roulette extends EventTarget {
     }
 
     // Auto-save functionality (non-blocking)
-    if (this._autoSaveEnabled && this._isRunning && currentTime - this._lastAutoSave > this._autoSaveInterval) {
+    if (this._autoSaveEnabled && this._isRunning && this._marbles.length > 0 && 
+        currentTime - this._lastAutoSave > this._autoSaveInterval) {
       this._lastAutoSave = currentTime;
       // Save asynchronously without blocking the render loop
       this.saveState().catch(err => {
@@ -456,72 +457,86 @@ export class Roulette extends EventTarget {
   }
 
   public async saveState(): Promise<number> {
-    await this._stateManager.init();
-    
-    const state: GameState = {
-      marbles: this._marbles.map(marble => marble.getState()),
-      winners: this._winners.map(w => ({ id: w.id, name: w.name })),
-      winnerRank: this._winnerRank,
-      totalMarbleCount: this._totalMarbleCount,
-      isRunning: this._isRunning,
-      timestamp: Date.now(),
-      stageIndex: this.getCurrentStageIndex(),
-    };
+    try {
+      await this._stateManager.init();
+      
+      if (this._marbles.length === 0) {
+        throw new Error('No marbles to save');
+      }
+      
+      const state: GameState = {
+        marbles: this._marbles.map(marble => marble.getState()),
+        winners: this._winners.map(w => ({ id: w.id, name: w.name })),
+        winnerRank: this._winnerRank,
+        totalMarbleCount: this._totalMarbleCount,
+        isRunning: this._isRunning,
+        timestamp: Date.now(),
+        stageIndex: this.getCurrentStageIndex(),
+      };
 
-    const id = await this._stateManager.saveState(state);
-    this.dispatchEvent(
-      new CustomEvent('stateSaved', { detail: { id, timestamp: state.timestamp } })
-    );
-    return id;
+      const id = await this._stateManager.saveState(state);
+      this.dispatchEvent(
+        new CustomEvent('stateSaved', { detail: { id, timestamp: state.timestamp } })
+      );
+      return id;
+    } catch (error) {
+      console.error('Failed to save state:', error);
+      throw error;
+    }
   }
 
   public async loadState(id?: number): Promise<void> {
-    await this._stateManager.init();
-    
-    const state = id !== undefined 
-      ? await this._stateManager.loadState(id)
-      : await this._stateManager.getLatestState();
+    try {
+      await this._stateManager.init();
+      
+      const state = id !== undefined 
+        ? await this._stateManager.loadState(id)
+        : await this._stateManager.getLatestState();
 
-    if (!state) {
-      throw new Error('No saved state found');
-    }
+      if (!state) {
+        throw new Error('No saved state found');
+      }
 
-    // Reset current state
-    this.clearMarbles();
-    this._clearMap();
+      // Reset current state
+      this.clearMarbles();
+      this._clearMap();
 
-    // Load stage
-    if (state.stageIndex >= 0 && state.stageIndex < stages.length) {
-      this._stage = stages[state.stageIndex];
-      this._loadMap();
-    }
+      // Load stage
+      if (state.stageIndex >= 0 && state.stageIndex < stages.length) {
+        this._stage = stages[state.stageIndex];
+        this._loadMap();
+      }
 
-    // Restore marbles
-    this._totalMarbleCount = state.totalMarbleCount;
-    this._winnerRank = state.winnerRank;
-    this._isRunning = state.isRunning;
+      // Restore marbles
+      this._totalMarbleCount = state.totalMarbleCount;
+      this._winnerRank = state.winnerRank;
+      this._isRunning = state.isRunning;
 
-    // Create marbles with saved state
-    state.marbles.forEach(marbleState => {
-      const marble = new Marble(
-        this.physics,
-        marbleState.id,
-        this._totalMarbleCount,
-        marbleState.name,
-        marbleState.weight,
+      // Create marbles with saved state
+      state.marbles.forEach(marbleState => {
+        const marble = new Marble(
+          this.physics,
+          marbleState.id,
+          this._totalMarbleCount,
+          marbleState.name,
+          marbleState.weight,
+        );
+        marble.setState(marbleState);
+        this._marbles.push(marble);
+      });
+
+      // Restore winners
+      this._winners = state.winners.map(w => {
+        return this._marbles.find(m => m.id === w.id)!;
+      }).filter(m => m !== undefined);
+
+      this.dispatchEvent(
+        new CustomEvent('stateLoaded', { detail: { timestamp: state.timestamp } })
       );
-      marble.setState(marbleState);
-      this._marbles.push(marble);
-    });
-
-    // Restore winners
-    this._winners = state.winners.map(w => {
-      return this._marbles.find(m => m.id === w.id)!;
-    }).filter(m => m !== undefined);
-
-    this.dispatchEvent(
-      new CustomEvent('stateLoaded', { detail: { timestamp: state.timestamp } })
-    );
+    } catch (error) {
+      console.error('Failed to load state:', error);
+      throw error;
+    }
   }
 
   public setAutoSave(enabled: boolean, interval?: number) {

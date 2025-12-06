@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>State Save/Load Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .test-section {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    .test-section h3 {
+      margin-top: 0;
+    }
+    button {
+      margin: 5px;
+      padding: 10px 15px;
+      cursor: pointer;
+    }
+    .result {
+      margin-top: 10px;
+      padding: 10px;
+      background: #f0f0f0;
+      border-radius: 3px;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+    .success {
+      background: #d4edda;
+      color: #155724;
+    }
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+  </style>
+</head>
+<body>
+  <h1>State Save/Load Feature Test</h1>
+  <p>This page demonstrates the state save/load functionality for large numbers of marbles.</p>
+
+  <div class="test-section">
+    <h3>Test 1: Basic Save/Load</h3>
+    <p>Tests basic save and load functionality</p>
+    <button onclick="testBasicSaveLoad()">Run Test</button>
+    <div id="test1-result" class="result"></div>
+  </div>
+
+  <div class="test-section">
+    <h3>Test 2: Large Number of Marbles (1000+)</h3>
+    <p>Tests performance with 1000 marbles</p>
+    <button onclick="testLargeMarbles()">Run Test</button>
+    <div id="test2-result" class="result"></div>
+  </div>
+
+  <div class="test-section">
+    <h3>Test 3: Auto-Save</h3>
+    <p>Tests auto-save functionality</p>
+    <button onclick="testAutoSave()">Run Test</button>
+    <div id="test3-result" class="result"></div>
+  </div>
+
+  <div class="test-section">
+    <h3>Test 4: State Management</h3>
+    <p>Tests getting all states and clearing</p>
+    <button onclick="testStateManagement()">Run Test</button>
+    <div id="test4-result" class="result"></div>
+  </div>
+
+  <script type="module">
+    import { StateManager } from './src/stateManager.ts';
+
+    window.stateManager = new StateManager();
+
+    window.testBasicSaveLoad = async function() {
+      const resultDiv = document.getElementById('test1-result');
+      resultDiv.textContent = 'Running test...';
+      
+      try {
+        await window.stateManager.init();
+        
+        // Create a test state
+        const testState = {
+          marbles: [
+            {
+              id: 0,
+              name: 'Test1',
+              weight: 1,
+              position: { x: 10, y: 5, angle: 0 },
+              velocity: { x: 1, y: 2 },
+              angularVelocity: 0.5,
+              isActive: true,
+              hue: 0,
+              coolTime: 1000,
+              stuckTime: 0
+            }
+          ],
+          winners: [],
+          winnerRank: 0,
+          totalMarbleCount: 1,
+          isRunning: false,
+          timestamp: Date.now(),
+          stageIndex: 0
+        };
+
+        // Save state
+        const saveId = await window.stateManager.saveState(testState);
+        
+        // Load state
+        const loadedState = await window.stateManager.loadState(saveId);
+        
+        // Verify
+        if (loadedState && loadedState.marbles.length === 1 && loadedState.marbles[0].name === 'Test1') {
+          resultDiv.className = 'result success';
+          resultDiv.textContent = `✓ Test passed!\nSave ID: ${saveId}\nLoaded state matches saved state`;
+        } else {
+          throw new Error('Loaded state does not match saved state');
+        }
+        
+        // Cleanup
+        await window.stateManager.deleteState(saveId);
+        
+      } catch (err) {
+        resultDiv.className = 'result error';
+        resultDiv.textContent = `✗ Test failed: ${err.message}`;
+      }
+    };
+
+    window.testLargeMarbles = async function() {
+      const resultDiv = document.getElementById('test2-result');
+      resultDiv.textContent = 'Running test with 1000 marbles...';
+      
+      try {
+        await window.stateManager.init();
+        
+        const startTime = performance.now();
+        
+        // Create state with 1000 marbles
+        const marbles = [];
+        for (let i = 0; i < 1000; i++) {
+          marbles.push({
+            id: i,
+            name: `Marble${i}`,
+            weight: Math.random(),
+            position: { x: Math.random() * 20, y: Math.random() * 10, angle: Math.random() * Math.PI * 2 },
+            velocity: { x: Math.random() * 2 - 1, y: Math.random() * 2 },
+            angularVelocity: Math.random() * 2 - 1,
+            isActive: true,
+            hue: (360 / 1000) * i,
+            coolTime: Math.random() * 5000,
+            stuckTime: 0
+          });
+        }
+        
+        const testState = {
+          marbles,
+          winners: [],
+          winnerRank: 0,
+          totalMarbleCount: 1000,
+          isRunning: true,
+          timestamp: Date.now(),
+          stageIndex: 0
+        };
+
+        // Save state
+        const saveTime = performance.now();
+        const saveId = await window.stateManager.saveState(testState);
+        const saveElapsed = performance.now() - saveTime;
+        
+        // Load state
+        const loadTime = performance.now();
+        const loadedState = await window.stateManager.loadState(saveId);
+        const loadElapsed = performance.now() - loadTime;
+        
+        const totalElapsed = performance.now() - startTime;
+        
+        // Verify
+        if (loadedState && loadedState.marbles.length === 1000) {
+          resultDiv.className = 'result success';
+          resultDiv.textContent = `✓ Test passed with 1000 marbles!\n` +
+            `Save time: ${saveElapsed.toFixed(2)}ms\n` +
+            `Load time: ${loadElapsed.toFixed(2)}ms\n` +
+            `Total time: ${totalElapsed.toFixed(2)}ms\n` +
+            `State size estimate: ~${(JSON.stringify(testState).length / 1024).toFixed(2)} KB`;
+        } else {
+          throw new Error('Loaded state incorrect');
+        }
+        
+        // Cleanup
+        await window.stateManager.deleteState(saveId);
+        
+      } catch (err) {
+        resultDiv.className = 'result error';
+        resultDiv.textContent = `✗ Test failed: ${err.message}`;
+      }
+    };
+
+    window.testAutoSave = async function() {
+      const resultDiv = document.getElementById('test3-result');
+      resultDiv.textContent = 'Testing auto-save (simulated)...';
+      
+      try {
+        await window.stateManager.init();
+        
+        const saveIds = [];
+        
+        // Simulate 3 auto-saves
+        for (let i = 0; i < 3; i++) {
+          const testState = {
+            marbles: [{ 
+              id: 0, 
+              name: `AutoSave${i}`,
+              weight: 1,
+              position: { x: i * 5, y: i * 3, angle: 0 },
+              velocity: { x: 0, y: 0 },
+              angularVelocity: 0,
+              isActive: true,
+              hue: 0,
+              coolTime: 1000,
+              stuckTime: 0
+            }],
+            winners: [],
+            winnerRank: 0,
+            totalMarbleCount: 1,
+            isRunning: true,
+            timestamp: Date.now() + i * 1000,
+            stageIndex: 0
+          };
+          
+          const saveId = await window.stateManager.saveState(testState);
+          saveIds.push(saveId);
+          
+          // Small delay
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        // Get latest state
+        const latestState = await window.stateManager.getLatestState();
+        
+        if (latestState && latestState.marbles[0].name === 'AutoSave2') {
+          resultDiv.className = 'result success';
+          resultDiv.textContent = `✓ Test passed!\nCreated ${saveIds.length} auto-save states\nLatest state: ${latestState.marbles[0].name}`;
+        } else {
+          throw new Error('Latest state incorrect');
+        }
+        
+        // Cleanup
+        for (const id of saveIds) {
+          await window.stateManager.deleteState(id);
+        }
+        
+      } catch (err) {
+        resultDiv.className = 'result error';
+        resultDiv.textContent = `✗ Test failed: ${err.message}`;
+      }
+    };
+
+    window.testStateManagement = async function() {
+      const resultDiv = document.getElementById('test4-result');
+      resultDiv.textContent = 'Testing state management...';
+      
+      try {
+        await window.stateManager.init();
+        
+        // Clear all first
+        await window.stateManager.clearAllStates();
+        
+        // Create multiple states
+        const saveIds = [];
+        for (let i = 0; i < 5; i++) {
+          const testState = {
+            marbles: [],
+            winners: [],
+            winnerRank: i,
+            totalMarbleCount: 0,
+            isRunning: false,
+            timestamp: Date.now() + i,
+            stageIndex: i
+          };
+          const saveId = await window.stateManager.saveState(testState);
+          saveIds.push(saveId);
+        }
+        
+        // Get all states
+        const allStates = await window.stateManager.getAllStates();
+        
+        if (allStates.length === 5) {
+          resultDiv.className = 'result success';
+          resultDiv.textContent = `✓ Test passed!\nCreated 5 states\nRetrieved ${allStates.length} states`;
+          
+          // Cleanup
+          await window.stateManager.clearAllStates();
+          
+          const afterClear = await window.stateManager.getAllStates();
+          if (afterClear.length === 0) {
+            resultDiv.textContent += '\nSuccessfully cleared all states';
+          }
+        } else {
+          throw new Error(`Expected 5 states, got ${allStates.length}`);
+        }
+        
+      } catch (err) {
+        resultDiv.className = 'result error';
+        resultDiv.textContent = `✗ Test failed: ${err.message}`;
+      }
+    };
+  </script>
+</body>
+</html>
