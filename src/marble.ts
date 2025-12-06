@@ -93,10 +93,6 @@ export class Marble {
     this.lastPosition = { x: state.position.x, y: state.position.y };
   }
 
-  get angle() {
-    return this.position.angle;
-  }
-
   constructor(
     physics: IPhysics,
     order: number,

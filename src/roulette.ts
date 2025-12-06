@@ -461,7 +461,7 @@ export class Roulette extends EventTarget {
       await this._stateManager.init();
       
       if (this._marbles.length === 0) {
-        throw new Error('No marbles to save');
+        throw new Error('Cannot save state: No marbles in the simulation. Please add marbles before saving.');
       }
       
       const state: GameState = {
