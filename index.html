@@ -101,6 +101,9 @@
       document.querySelector('.btn-last-winner').classList.toggle('active', false);
       document.querySelector('#in_winningRank').classList.toggle('active', true);
     }
+    
+    // Sync winner type to roulette instance
+    window.roulette.setWinnerType(winnerType);
   }
 
 
@@ -118,6 +121,9 @@
       return;
     }
     console.log('initializing start');
+
+    // Initialize dark mode option
+    window.options.darkMode = true;
 
     const urlParams = new URLSearchParams(window.location.search);
     const namesFromUrl = urlParams.get('names');
@@ -223,6 +229,90 @@
 
     window.roulette.addEventListener('message', (e) => {
       simpleToast(e.detail);
+    });
+
+    // Listen for state restoration event to update UI
+    window.roulette.addEventListener('stateRestored', (e) => {
+      const detail = e.detail;
+      
+      // Hide settings panel like when game starts
+      document.querySelector('#settings').classList.add('hide');
+      document.querySelector('#donate').classList.add('hide');
+      
+      // Restore UI state
+      if (detail.stageIndex !== undefined) {
+        document.querySelector('#sltMap').value = detail.stageIndex;
+      }
+      
+      if (detail.winnerType) {
+        winnerType = detail.winnerType;
+        const rank = window.options.winningRank + 1;
+        setWinnerRank(rank);
+      }
+      
+      if (detail.darkMode !== undefined) {
+        document.querySelector('#chkDarkMode').checked = detail.darkMode;
+        window.roulette.setTheme(detail.darkMode ? 'dark' : 'light');
+        document.documentElement.classList.toggle('light', !detail.darkMode);
+      }
+      
+      // Restore other checkboxes
+      document.querySelector('#chkAutoRecording').checked = window.options.autoRecording;
+      document.querySelector('#chkSkill').checked = window.options.useSkills;
+    });
+
+    // State management event handlers
+    document.querySelector('#btnSaveState').addEventListener('click', async () => {
+      try {
+        await window.roulette.saveState();
+        simpleToast('Game state saved successfully!');
+      } catch (error) {
+        console.error('Failed to save state:', error);
+        simpleToast('Failed to save game state');
+      }
+    });
+
+    document.querySelector('#btnLoadState').addEventListener('click', async () => {
+      try {
+        const loaded = await window.roulette.loadState();
+        if (loaded) {
+          simpleToast('Game state restored successfully!');
+          ready = true;
+        } else {
+          simpleToast('No saved state found');
+        }
+      } catch (error) {
+        console.error('Failed to load state:', error);
+        simpleToast('Failed to load game state');
+      }
+    });
+
+    document.querySelector('#btnClearState').addEventListener('click', async () => {
+      const message = window.translate ? window.translate('Are you sure you want to clear the saved game state?') : 'Are you sure you want to clear the saved game state?';
+      if (confirm(message)) {
+        try {
+          await window.roulette.clearSavedState();
+          simpleToast('Saved state cleared successfully!');
+        } catch (error) {
+          console.error('Failed to clear state:', error);
+          simpleToast('Failed to clear saved state');
+        }
+      }
+    });
+
+    // Check for saved state on startup
+    window.roulette.hasSavedState().then(hasSaved => {
+      if (hasSaved) {
+        const message = window.translate ? window.translate('Found saved game state. Would you like to restore it?') : 'Found saved game state. Would you like to restore it?';
+        if (confirm(message)) {
+          window.roulette.loadState().then(loaded => {
+            if (loaded) {
+              simpleToast('Game state restored!');
+              ready = true;
+            }
+          });
+        }
+      }
     });
 
     document.querySelector('#btnShuffle').click();
@@ -348,6 +438,19 @@
     <div class="actions">
       <button id="btnNotice">
         <i class="icon megaphone"></i>
+      </button>
+      <div class="sep"></div>
+      <button id="btnSaveState" title="Save game state">
+        <i class="icon save"></i>
+        <span data-trans>Save</span>
+      </button>
+      <button id="btnLoadState" title="Load saved game state">
+        <i class="icon upload"></i>
+        <span data-trans>Load</span>
+      </button>
+      <button id="btnClearState" title="Clear saved game state">
+        <i class="icon trash"></i>
+        <span data-trans>Clear</span>
       </button>
       <div class="sep"></div>
       <button id="btnShuffle">

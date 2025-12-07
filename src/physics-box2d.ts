@@ -210,4 +210,35 @@ export class Box2dPhysics implements IPhysics {
       }
     }
   }
+
+  setMarblePosition(id: number, x: number, y: number, angle: number): void {
+    const marble = this.marbleMap[id];
+    if (marble) {
+      marble.SetTransform(new this.Box2D.b2Vec2(x, y), angle);
+      marble.SetAwake(true);
+    }
+  }
+
+  enableMarble(id: number): void {
+    const marble = this.marbleMap[id];
+    if (marble) {
+      marble.SetAwake(true);
+      marble.SetEnabled(true);
+    }
+  }
+
+  getEntityAngles(): number[] {
+    return this.entities.map((entity) => entity.body.GetAngle());
+  }
+
+  setEntityAngles(angles: number[]): void {
+    if (angles.length !== this.entities.length) {
+      console.warn(`Entity angle mismatch: expected ${this.entities.length} angles, got ${angles.length}`);
+    }
+    for (let i = 0; i < Math.min(angles.length, this.entities.length); i++) {
+      const entity = this.entities[i];
+      const currentPos = entity.body.GetPosition();
+      entity.body.SetTransform(currentPos, angles[i]);
+    }
+  }
 }

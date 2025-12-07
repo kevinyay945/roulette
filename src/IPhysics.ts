@@ -25,4 +25,12 @@ export interface IPhysics {
   start(): void;
 
   step(deltaSeconds: number): void;
+
+  setMarblePosition(id: number, x: number, y: number, angle: number): void;
+
+  enableMarble(id: number): void;
+
+  getEntityAngles(): number[];
+
+  setEntityAngles(angles: number[]): void;
 }
