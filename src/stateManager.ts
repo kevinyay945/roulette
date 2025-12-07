@@ -3,6 +3,8 @@
  * Optimized for handling large numbers of marbles (30,000+)
  */
 
+export type WinnerType = 'first' | 'last' | 'custom';
+
 export interface MarbleState {
   id: number;
   name: string;
@@ -39,7 +41,7 @@ export interface GameState {
     autoRecording: boolean;
     darkMode: boolean;
   };
-  winnerType: string; // 'first', 'last', or 'custom'
+  winnerType: WinnerType;
   timestamp: number;
 }
 

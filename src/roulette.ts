@@ -18,7 +18,7 @@ import { Box2dPhysics } from './physics-box2d';
 import { MouseEventHandlerName, MouseEventName } from './types/mouseEvents.type';
 import { FastForwader } from './fastForwader';
 import { ColorTheme } from './types/ColorTheme';
-import { StateManager } from './stateManager';
+import { StateManager, WinnerType } from './stateManager';
 
 export class Roulette extends EventTarget {
   private _marbles: Marble[] = [];
@@ -59,7 +59,7 @@ export class Roulette extends EventTarget {
   private _lastSaveTime: number = 0;
   private _saveInterval: number = 2000; // Save every 2 seconds when running
   private _pendingSave: boolean = false;
-  private _winnerType: string = 'first'; // Track winner type: 'first', 'last', or 'custom'
+  private _winnerType: WinnerType = 'first'; // Track winner type: 'first', 'last', or 'custom'
 
   get isReady() {
     return this._isReady;
@@ -357,11 +357,11 @@ export class Roulette extends EventTarget {
     this._winnerRank = rank;
   }
 
-  public setWinnerType(type: string) {
+  public setWinnerType(type: WinnerType) {
     this._winnerType = type;
   }
 
-  public getWinnerType() {
+  public getWinnerType(): WinnerType {
     return this._winnerType;
   }
 
@@ -560,7 +560,7 @@ export class Roulette extends EventTarget {
       options.useSkills = state.options.useSkills;
       options.winningRank = state.options.winningRank;
       options.autoRecording = state.options.autoRecording;
-      options.darkMode = state.options.darkMode ?? true;
+      options.darkMode = state.options.darkMode !== undefined ? state.options.darkMode : true;
 
       // Dispatch event to notify that state was restored (to hide settings panel)
       this.dispatchEvent(new CustomEvent('stateRestored', { 
