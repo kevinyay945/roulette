@@ -57,7 +57,7 @@ export class Roulette extends EventTarget {
   private _theme: ColorTheme = Themes.dark;
   private stateManager: StateManager = new StateManager();
   private _lastSaveTime: number = 0;
-  private _saveInterval: number = 2000; // Save every 2 seconds when running
+  private _saveInterval: number = 5000; // Base save interval: 5 seconds (optimized for 30K+ marbles)
   private _pendingSave: boolean = false;
   private _winnerType: WinnerType = 'first'; // Track winner type: 'first', 'last', or 'custom'
 
@@ -463,10 +463,16 @@ export class Roulette extends EventTarget {
     }
 
     try {
+      const startTime = performance.now();
+      
+      // Collect state - extract variables to avoid repeated computations
       const entityAngles = this.physics.getEntityAngles();
+      const marbleStates = this._marbles.map(m => m.getState());
+      const winnerStates = this._winners.map(m => m.getState());
+      
       const state = {
-        marbles: this._marbles.map(m => m.getState()),
-        winners: this._winners.map(m => m.getState()),
+        marbles: marbleStates,
+        winners: winnerStates,
         entities: entityAngles.map((angle, index) => ({ index, angle })),
         winnerRank: this._winnerRank,
         isRunning: this._isRunning,
@@ -487,6 +493,12 @@ export class Roulette extends EventTarget {
 
       await this.stateManager.saveState(state);
       this._pendingSave = false;
+      
+      // Log performance metrics for large marble counts
+      const elapsed = performance.now() - startTime;
+      if (this._marbles.length > 1000) {
+        console.log(`State saved: ${this._marbles.length} marbles in ${elapsed.toFixed(2)}ms`);
+      }
     } catch (error) {
       console.error('Failed to save state:', error);
     }
@@ -599,11 +611,23 @@ export class Roulette extends EventTarget {
 
   private _autoSaveState() {
     const now = Date.now();
-    if (this._isRunning && this._marbles.length > 0 && now - this._lastSaveTime > this._saveInterval) {
+    
+    // Adaptive save interval based on marble count for better performance
+    const marbleCount = this._marbles.length;
+    let adaptiveInterval = this._saveInterval;
+    
+    // Increase interval for large marble counts to reduce overhead
+    if (marbleCount > 10000) {
+      adaptiveInterval = 10000; // 10 seconds for 10K+ marbles
+    } else if (marbleCount > 5000) {
+      adaptiveInterval = 7000; // 7 seconds for 5K-10K marbles
+    }
+    
+    if (this._isRunning && marbleCount > 0 && now - this._lastSaveTime > adaptiveInterval) {
       this._lastSaveTime = now;
       if (!this._pendingSave) {
         this._pendingSave = true;
-        // Use queueMicrotask for better performance
+        // Defer save until after current execution context completes
         queueMicrotask(() => this.saveState());
       }
     }
