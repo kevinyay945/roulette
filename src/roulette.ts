@@ -59,6 +59,7 @@ export class Roulette extends EventTarget {
   private _lastSaveTime: number = 0;
   private _saveInterval: number = 2000; // Save every 2 seconds when running
   private _pendingSave: boolean = false;
+  private _winnerType: string = 'first'; // Track winner type: 'first', 'last', or 'custom'
 
   get isReady() {
     return this._isReady;
@@ -356,6 +357,14 @@ export class Roulette extends EventTarget {
     this._winnerRank = rank;
   }
 
+  public setWinnerType(type: string) {
+    this._winnerType = type;
+  }
+
+  public getWinnerType() {
+    return this._winnerType;
+  }
+
   public setAutoRecording(value: boolean) {
     this._autoRecording = value;
   }
@@ -470,7 +479,9 @@ export class Roulette extends EventTarget {
           useSkills: options.useSkills,
           winningRank: options.winningRank,
           autoRecording: options.autoRecording,
+          darkMode: options.darkMode,
         },
+        winnerType: this._winnerType,
         timestamp: Date.now(),
       };
 
@@ -533,6 +544,7 @@ export class Roulette extends EventTarget {
       // Restore game state
       this._winnerRank = state.winnerRank;
       this._isRunning = state.isRunning;
+      this._winnerType = state.winnerType || 'first';
 
       // Restore entity angles (spinners)
       if (state.entities && state.entities.length > 0) {
@@ -548,6 +560,16 @@ export class Roulette extends EventTarget {
       options.useSkills = state.options.useSkills;
       options.winningRank = state.options.winningRank;
       options.autoRecording = state.options.autoRecording;
+      options.darkMode = state.options.darkMode ?? true;
+
+      // Dispatch event to notify that state was restored (to hide settings panel)
+      this.dispatchEvent(new CustomEvent('stateRestored', { 
+        detail: { 
+          stageIndex: state.stageIndex,
+          winnerType: this._winnerType,
+          darkMode: options.darkMode
+        } 
+      }));
 
       console.log(`State restored: ${this._marbles.length} marbles, ${this._winners.length} winners, ${state.entities?.length || 0} entities`);
       

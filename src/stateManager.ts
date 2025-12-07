@@ -37,7 +37,9 @@ export interface GameState {
     useSkills: boolean;
     winningRank: number;
     autoRecording: boolean;
+    darkMode: boolean;
   };
+  winnerType: string; // 'first', 'last', or 'custom'
   timestamp: number;
 }
 

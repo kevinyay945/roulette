@@ -101,6 +101,9 @@
       document.querySelector('.btn-last-winner').classList.toggle('active', false);
       document.querySelector('#in_winningRank').classList.toggle('active', true);
     }
+    
+    // Sync winner type to roulette instance
+    window.roulette.setWinnerType(winnerType);
   }
 
 
@@ -118,6 +121,9 @@
       return;
     }
     console.log('initializing start');
+
+    // Initialize dark mode option
+    window.options.darkMode = true;
 
     const urlParams = new URLSearchParams(window.location.search);
     const namesFromUrl = urlParams.get('names');
@@ -223,6 +229,36 @@
 
     window.roulette.addEventListener('message', (e) => {
       simpleToast(e.detail);
+    });
+
+    // Listen for state restoration event to update UI
+    window.roulette.addEventListener('stateRestored', (e) => {
+      const detail = e.detail;
+      
+      // Hide settings panel like when game starts
+      document.querySelector('#settings').classList.add('hide');
+      document.querySelector('#donate').classList.add('hide');
+      
+      // Restore UI state
+      if (detail.stageIndex !== undefined) {
+        document.querySelector('#sltMap').value = detail.stageIndex;
+      }
+      
+      if (detail.winnerType) {
+        winnerType = detail.winnerType;
+        const rank = window.options.winningRank + 1;
+        setWinnerRank(rank);
+      }
+      
+      if (detail.darkMode !== undefined) {
+        document.querySelector('#chkDarkMode').checked = detail.darkMode;
+        window.roulette.setTheme(detail.darkMode ? 'dark' : 'light');
+        document.documentElement.classList.toggle('light', !detail.darkMode);
+      }
+      
+      // Restore other checkboxes
+      document.querySelector('#chkAutoRecording').checked = window.options.autoRecording;
+      document.querySelector('#chkSkill').checked = window.options.useSkills;
     });
 
     // State management event handlers
